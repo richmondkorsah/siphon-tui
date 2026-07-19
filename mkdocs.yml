@@ -1,0 +1,55 @@
+site_name: Siphon
+site_description: A polished terminal UI for downloading videos and audio via yt-dlp.
+site_url: https://siphon-tui.github.io/siphon
+repo_url: https://github.com/siphon-tui/siphon
+repo_name: siphon-tui/siphon
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.integrate
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: slate
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Architecture: architecture.md
+  - Development: development.md
+  - Roadmap: roadmap.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji
+
+plugins:
+  - search

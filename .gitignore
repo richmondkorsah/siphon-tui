@@ -1,0 +1,110 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
+share/python-wheels/
+MANIFEST
+develop-eggs/
+parts/
+sdist/
+var/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.tox/
+.nox/
+nosetests.xml
+
+# uv / packaging
+.python-version
+
+# Docs (mkdocs)
+site/
+docs/_build/
+
+# IDEs / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.spyderproject
+.spyproject
+.ropeproject
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Textual
+.textual/
+textual.log
+*.tcss.bak
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Siphon runtime / downloads
+downloads/
+*.part
+*.ytdl
+*.frag
+*.frag.aria2
+*.info.json
+*.description
+*.annotations.xml
+
+# Logs
+*.log
+logs/
+
+# Misc
+tmp/
+.tmp/
+scratch/
+*.bak
+*.orig

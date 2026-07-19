@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python-version }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.13", "3.14"]
+        # macOS + Windows enabled once the maintainer signs up for the CI cost.
+        # include:
+        #   - os: macos-latest
+        #     python-version: "3.13"
+        #   - os: windows-latest
+        #     python-version: "3.13"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (black)
+        run: uv run black --check .
+
+      - name: Type check (mypy strict)
+        run: uv run mypy src/siphon
+
+      - name: Tests (pytest)
+        run: uv run pytest
