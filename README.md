@@ -10,7 +10,9 @@ Built with [Textual](https://textual.textualize.io/) and
 [Rich](https://rich.readthedocs.io/) on Python 3.13+.
 
 ```bash
-uv tool install siphon-tui       # or: pipx install siphon-tui
+pip install git+https://github.com/richmondkorsah/siphon-cli.git
+# or, with uv:
+uv tool install git+https://github.com/richmondkorsah/siphon-cli.git
 
 siphon                            # open the TUI
 siphon https://youtu.be/…         # skip input, go straight to probing
@@ -56,8 +58,8 @@ Full documentation — install, config, architecture, development — lives at
 ## Development
 
 ```bash
-git clone https://github.com/siphon-tui/siphon
-cd siphon
+git clone https://github.com/richmondkorsah/siphon-cli
+cd siphon-cli
 uv sync --all-extras
 uv run pytest            # 300+ tests
 uv run siphon --help

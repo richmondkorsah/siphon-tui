@@ -51,8 +51,8 @@ docs = [
 siphon = "siphon.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/siphon-tui/siphon"
-Issues = "https://github.com/siphon-tui/siphon/issues"
+Homepage = "https://github.com/richmondkorsah/siphon-cli"
+Issues = "https://github.com/richmondkorsah/siphon-cli/issues"
 
 [build-system]
 requires = ["hatchling"]
