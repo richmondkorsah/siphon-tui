@@ -10,9 +10,9 @@ Built with [Textual](https://textual.textualize.io/) and
 [Rich](https://rich.readthedocs.io/) on Python 3.13+.
 
 ```bash
-pip install git+https://github.com/richmondkorsah/siphon-cli.git
+pip install git+https://github.com/richmondkorsah/siphon-tui.git
 # or, with uv:
-uv tool install git+https://github.com/richmondkorsah/siphon-cli.git
+uv tool install git+https://github.com/richmondkorsah/siphon-tui.git
 
 siphon                            # open the TUI
 siphon https://youtu.be/…         # skip input, go straight to probing
