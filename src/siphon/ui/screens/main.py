@@ -227,6 +227,10 @@ class MainScreen(Screen[str]):
         width: 100%;
         content-align: center middle;
     }
+    #done-button-row {
+        width: 100%;
+        height: 3;
+    }
     #done-button {
         border: round $primary;
         padding: 0 3;
@@ -490,7 +494,9 @@ class MainScreen(Screen[str]):
         )
         short = shorten_path(phase.filepath, max_length=60)
         await container.mount(Static(short, classes="path", id="done-path"))
-        await container.mount(Static("↵ siphon another", id="done-button"))
+        button_row = Center(id="done-button-row")
+        await container.mount(button_row)
+        await button_row.mount(Static("↵ siphon another", id="done-button"))
 
     def _hints_for_done(self) -> list[Hint]:
         return [

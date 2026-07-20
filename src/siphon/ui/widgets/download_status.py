@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Center, Vertical
 from textual.widget import Widget
 from textual.widgets import Static
 
@@ -33,15 +33,22 @@ class DownloadStatusView(Widget):
     DEFAULT_CSS = """
     DownloadStatusView {
         height: 3;
-        width: auto;
-        min-width: 42;
+        width: 100%;
     }
     DownloadStatusView > Vertical {
         height: 3;
-        width: auto;
+        width: 100%;
+    }
+    DownloadStatusView #status-bar-row {
+        height: 1;
+        width: 100%;
     }
     DownloadStatusView #status-gap {
         height: 1;
+    }
+    DownloadStatusView #status-meta-row {
+        height: 1;
+        width: 100%;
     }
     DownloadStatusView #status-meta {
         color: $text-muted;
@@ -60,9 +67,11 @@ class DownloadStatusView(Widget):
     def compose(self) -> ComposeResult:
         """Yield the three fixed-height rows."""
         with Vertical():
-            yield ProgressBar(0.0, id="status-bar")
+            with Center(id="status-bar-row"):
+                yield ProgressBar(0.0, id="status-bar")
             yield Static("", id="status-gap")
-            yield Static(self._meta_text(), id="status-meta")
+            with Center(id="status-meta-row"):
+                yield Static(self._meta_text(), id="status-meta")
 
     # ------------------------------------------------------ external state
     def apply_progress(self, progress: DownloadProgress) -> None:

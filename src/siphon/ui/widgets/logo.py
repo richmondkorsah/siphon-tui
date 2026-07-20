@@ -32,12 +32,12 @@ from siphon.ui.animations.logo_animation import (
 # One glyph per letter: three rows of exactly 4 cells.
 # All strings use only "█ ▀ ▄ space" so animation transforms stay simple.
 _GLYPHS: Final[dict[str, tuple[str, str, str]]] = {
-    "S": ("▒▀▀▀", "▀▀▀▒", "▒▄▄█"),
+    "S": ("█▀▀▀", "▀▀▀█", "█▄▄█"),
     "I": ("▀██▀", " ██ ", "▄██▄"),
-    "P": ("█▀▀█", "█▀▀▀", "▒   "),
-    "H": ("█  █", "▒▄▄█", "█  █"),
-    "O": ("█▀▀▒", "▒  █", "▒▄▄█"),
-    "N": ("▒▄ █", "▒ ▀█", "▒  █"),
+    "P": ("█▀▀█", "█▀▀▀", "█   "),
+    "H": ("█  █", "█▄▄█", "█  █"),
+    "O": ("█▀▀█", "█  █", "█▄▄█"),
+    "N": ("█▄ █", "█ ▀█", "█  █"),
 }
 
 _WORD: Final[str] = "SIPHON"
