@@ -1,6 +1,6 @@
 [project]
 name = "siphon-tui"
-version = "0.1.0"
+version = "0.1.1"
 description = "A polished terminal UI for downloading videos from ~1,800 sites via yt-dlp. Paste. Sip. Done."
 readme = "README.md"
 license = { text = "MIT" }
