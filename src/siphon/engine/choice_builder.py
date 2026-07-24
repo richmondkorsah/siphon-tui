@@ -21,7 +21,8 @@ Selection rules (parity with yoinks ``buildChoices``):
 
   * Video @ height H:
     ``bv*[height=H]+ba/b[height=H]/bv*[height<=H]+ba/b`` with
-    ``merge_output_format=mp4``.
+    ``merge_output_format=mp4`` and an ``FFmpegMetadata`` postprocessor
+    (``add_chapters=True``) to embed source chapter markers.
   * Audio-only: ``ba/b`` with an ``FFmpegExtractAudio`` postprocessor
     (mp3, ``preferredquality='0'`` for max VBR).
 
@@ -147,11 +148,25 @@ def _video_ytdlp_opts(height: int) -> dict[str, Any]:
     return {
         "format": f"bv*[height={height}]+ba/b[height={height}]/bv*[height<={height}]+ba/b",
         "merge_output_format": "mp4",
+        "postprocessors": [_embed_chapters_pp()],
     }
 
 
 def _video_fallback_opts() -> dict[str, Any]:
-    return {"format": "bv*+ba/b", "merge_output_format": "mp4"}
+    return {
+        "format": "bv*+ba/b",
+        "merge_output_format": "mp4",
+        "postprocessors": [_embed_chapters_pp()],
+    }
+
+
+def _embed_chapters_pp() -> dict[str, Any]:
+    """Postprocessor entry matching yt-dlp's ``--embed-chapters`` CLI flag.
+
+    yt-dlp only writes a chapters atom/element when the extractor actually
+    found chapters — no-op otherwise, so it's safe to always include.
+    """
+    return {"key": "FFmpegMetadata", "add_chapters": True}
 
 
 def _audio_ytdlp_opts() -> dict[str, Any]:

@@ -148,3 +148,15 @@ class TestFallbacks:
         top = choices[0]
         assert "[height=1080]" in top.ytdlp_opts["format"]
         assert top.ytdlp_opts["merge_output_format"] == "mp4"
+
+    def test_video_embeds_chapters(self, yt_info: dict[str, Any]) -> None:
+        top = build_choices(yt_info)[0]
+        pps = top.ytdlp_opts.get("postprocessors")
+        assert isinstance(pps, list)
+        assert {"key": "FFmpegMetadata", "add_chapters": True} in pps
+
+    def test_fallback_video_embeds_chapters(self) -> None:
+        video = build_choices({"title": "x"})[0]
+        pps = video.ytdlp_opts.get("postprocessors")
+        assert isinstance(pps, list)
+        assert {"key": "FFmpegMetadata", "add_chapters": True} in pps
