@@ -3,7 +3,7 @@ name = "siphon-tui"
 version = "0.2.0"
 description = "A polished terminal UI for downloading videos from ~1,800 sites via yt-dlp. Paste. Sip. Done."
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "PolyForm-Noncommercial-1.0.0" }
 requires-python = ">=3.13"
 authors = [{ name = "Siphon contributors" }]
 keywords = ["yt-dlp", "video", "download", "tui", "textual", "terminal"]
@@ -11,7 +11,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
