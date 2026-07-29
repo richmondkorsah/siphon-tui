@@ -169,6 +169,11 @@ def download(
         "progress_hooks": [state.hook_progress],
         "postprocessor_hooks": [state.hook_processing],
         "logger": _SilentLogger(),
+        # Explicit (matches yt-dlp's own default) so a retry that calls
+        # download() again with the same outtmpl resumes the .part file
+        # left on disk by a prior non-cancelled failure, rather than
+        # silently depending on that default never changing.
+        "continuedl": True,
     }
     if ffmpeg_location:
         opts["ffmpeg_location"] = ffmpeg_location

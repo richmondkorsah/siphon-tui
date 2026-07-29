@@ -10,7 +10,7 @@ two-column body: title / uploader / duration on the left, a titled
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 
 from textual.app import ComposeResult
 from textual.binding import Binding, BindingType
@@ -60,6 +60,16 @@ from siphon.ui.widgets.tagline import TaglineStrip
 from siphon.utils.format import format_duration, shorten_path, truncate
 from siphon.workers.download_worker import run_download
 from siphon.workers.probe_worker import probe
+
+
+class _DownloadArgs(NamedTuple):
+    """Everything needed to (re)launch a download — see :meth:`MainScreen._start_download`."""
+
+    url: str
+    title: str
+    choice: DownloadChoice
+    output_dir: Path
+    ffmpeg_location: str | None
 
 
 class MainScreen(Screen[str]):
@@ -262,9 +272,11 @@ class MainScreen(Screen[str]):
         self._initial_url = initial_url
         self._probe_token: CancellationToken | None = None
         self._download_token: CancellationToken | None = None
-        # Populated by :meth:`on_choice_selected`; the M5 downloader consumes
-        # it to actually fetch the file.
-        self._last_choice: DownloadChoice | None = None
+        # Set by :meth:`_start_download`; re-used by :meth:`action_submit_current`
+        # to relaunch the same download (same output path) on a retryable
+        # ErrorPhase, so yt-dlp resumes from the partial file instead of
+        # starting over.
+        self._last_download_args: _DownloadArgs | None = None
         # Set when a background update-check finds a stale package.
         self._update_hint: str | None = None
 
@@ -642,26 +654,39 @@ class MainScreen(Screen[str]):
         if not isinstance(current, PickingPhase):
             return
 
-        self._last_choice = event.choice
-        self._download_token = CancellationToken()
-        self.phase = DownloadingPhase(
-            url=current.url,
-            title=current.title,
-            choice=event.choice,
-        )
         settings = get_settings()
         output_dir = settings.download_dir
         override = getattr(self.app, "output_dir_override", None)
         if isinstance(override, str) and override:
             output_dir = Path(override).expanduser()
 
-        self.run_worker(
-            run_download(
+        self._start_download(
+            _DownloadArgs(
                 url=current.url,
-                choice=event.choice,
                 title=current.title,
+                choice=event.choice,
                 output_dir=output_dir,
                 ffmpeg_location=ffmpeg_discovery.find_ffmpeg(),
+            )
+        )
+
+    def _start_download(self, args: _DownloadArgs) -> None:
+        """Launch (or relaunch) a download and remember the args for retry.
+
+        Re-using the same ``output_dir``/``choice`` on a retry means yt-dlp
+        writes to the same destination path, so it resumes from the partial
+        file left by a prior failed attempt instead of starting over.
+        """
+        self._last_download_args = args
+        self._download_token = CancellationToken()
+        self.phase = DownloadingPhase(url=args.url, title=args.title, choice=args.choice)
+        self.run_worker(
+            run_download(
+                url=args.url,
+                choice=args.choice,
+                title=args.title,
+                output_dir=args.output_dir,
+                ffmpeg_location=args.ffmpeg_location,
                 token=self._download_token,
                 screen=self,
             ),
@@ -701,7 +726,7 @@ class MainScreen(Screen[str]):
     def on_download_failed(self, event: DownloadFailed) -> None:
         """Download raised a non-cancellation error."""
         event.stop()
-        self.phase = ErrorPhase(message=event.message)
+        self.phase = ErrorPhase(message=event.message, context={"retryable": "true"})
 
     def on_update_hint_available(self, event: UpdateHintAvailable) -> None:
         """Background update check surfaced a hint — append it to the footer."""
@@ -746,9 +771,17 @@ class MainScreen(Screen[str]):
                 return
             choice_list.action_select_cursor()
             return
-        if isinstance(self.phase, (DonePhase, ErrorPhase)):
-            # Both terminal phases fall through to a fresh input.
+        if isinstance(self.phase, DonePhase):
             self.phase = InputPhase()
+            return
+        if isinstance(self.phase, ErrorPhase):
+            retryable = self.phase.context.get("retryable") == "true"
+            if retryable and self._last_download_args is not None:
+                # Relaunch the same download so yt-dlp resumes the partial
+                # file instead of the user having to re-paste + re-pick.
+                self._start_download(self._last_download_args)
+            else:
+                self.phase = InputPhase()
             return
         try:
             framed = self.query_one(FramedInput)

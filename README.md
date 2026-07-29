@@ -25,23 +25,54 @@ Paste a URL into the field — Siphon auto-submits. Pick a quality
 
 - **All native.** Uses `yt-dlp`'s Python API directly — no subprocess parsing.
 - **Cancel-safe.** Escape rolls back any phase and cleans up `.part` files.
+- **Resumable retries.** A failed download picks up where it left off on
+  retry — no re-probe, no restarting the file from zero.
+- **Chapter markers.** Video downloads embed the source's chapters, when the
+  site provides them.
 - **Terminal-friendly.** Textual handles alt-screen enter/exit even on crash.
 - **Searchable history.** `ctrl+r` opens a fuzzy-filterable list of past URLs.
 - **Command palette.** `ctrl+p` lists everything Siphon can do.
 - **Themed.** `auto` / `light` / `dark`, cycled with `ctrl+t` and persisted.
 
+## Usage
+
+```bash
+siphon                              # opens the TUI
+siphon <url>                        # skip input, go straight to probing
+siphon --theme dark <url>           # force a theme: auto | light | dark
+siphon --output-dir ~/Videos <url>  # override the download folder for this run
+siphon --help
+siphon --version
+```
+
 ## Keys
 
 | Key | Action |
 |---|---|
-| `enter` | siphon / pick / try again |
+| `enter` | siphon / pick / retry (resumes) |
 | `esc` | cancel or back |
 | `tab` | accept the clipboard URL Siphon offered |
-| `↑`/`↓` | history / navigate |
+| `↑`/`↓` | history / navigate the picker |
+| `j`/`k` | vim-style navigation in the picker |
 | `ctrl+r` | history modal |
 | `ctrl+p` | command palette |
 | `ctrl+t` | cycle theme |
 | `ctrl+c` | quit |
+
+## Configuration
+
+Settings persist to `~/.config/siphon/config.toml` (theme mode, download
+dir, update-checker toggle) and can be overridden per-invocation with
+`SIPHON_`-prefixed env vars:
+
+```bash
+SIPHON_THEME_MODE=dark siphon
+SIPHON_DOWNLOAD_DIR=~/Videos siphon
+SIPHON_CHECK_UPDATES=false siphon
+```
+
+URL history lives alongside it at `~/.config/siphon/history.jsonl` (newest
+first, capped at 50 entries).
 
 ## Docs
 
@@ -58,8 +89,8 @@ Full documentation — install, config, architecture, development — lives at
 ## Development
 
 ```bash
-git clone https://github.com/richmondkorsah/siphon-cli
-cd siphon-cli
+git clone https://github.com/richmondkorsah/siphon-tui.git
+cd siphon-tui
 uv sync --all-extras
 uv run pytest            # 300+ tests
 uv run siphon --help
@@ -72,4 +103,6 @@ than drive `yt-dlp` locally on your machine.
 
 ## License
 
-MIT.
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).
+Free to use, modify, and share for any noncommercial purpose; commercial use
+(resale, paid hosting, bundling into a paid product) isn't permitted.
