@@ -29,34 +29,37 @@ from siphon.ui.animations.logo_animation import (
     sweep_offset,
 )
 
-# One glyph per letter: three rows of exactly 4 cells.
-# All strings use only "█ ▀ ▄ space" so animation transforms stay simple.
-_GLYPHS: Final[dict[str, tuple[str, str, str]]] = {
-    "S": ("█▀▀▀", "▀▀▀█", "█▄▄█"),
-    "I": ("▀██▀", " ██ ", "▄██▄"),
-    "P": ("█▀▀█", "█▀▀▀", "█   "),
-    "H": ("█  █", "█▄▄█", "█  █"),
-    "O": ("█▀▀█", "█  █", "█▄▄█"),
-    "N": ("█▄ █", "█ ▀█", "█  █"),
-}
-
-_WORD: Final[str] = "SIPHON"
-_GLYPH_GAP: Final[str] = " "
-
-
-def _compose_row(row_index: int) -> str:
-    return _GLYPH_GAP.join(_GLYPHS[letter][row_index] for letter in _WORD)
+# The SIPHON logo in shaded-block art. Only ``█``, ``░`` and space appear —
+# the animation transforms (see :mod:`siphon.ui.animations.logo_animation`)
+# handle every glyph in that set (``█`` shimmers ``░ → ▒ → █`` on intro and
+# lightens to ``▒`` under sweep; ``░`` renders as-is with dim styling).
+_LOGO_ART: Final[str] = """\
+   ░██████   ░██           ░██
+ ░██   ░██                ░██
+░██         ░██░████████  ░████████   ░███████  ░████████
+ ░████████  ░██░██    ░██ ░██    ░██ ░██    ░██ ░██    ░██
+        ░██ ░██░██    ░██ ░██    ░██ ░██    ░██ ░██    ░██
+ ░██   ░██  ░██░███   ░██ ░██    ░██ ░██    ░██ ░██    ░██
+  ░██████   ░██░██░█████  ░██    ░██  ░███████  ░██    ░██
+               ░██
+               ░██
+"""
 
 
-LOGO_LINES: Final[tuple[str, str, str]] = (
-    _compose_row(0),
-    _compose_row(1),
-    _compose_row(2),
-)
-"""The three fully-composed rows of the SIPHON logo."""
+def _normalized_logo_lines() -> tuple[str, ...]:
+    """Split the raw art into rows, drop trailing blank lines, right-pad to max width."""
+    rows = [line.rstrip() for line in _LOGO_ART.splitlines()]
+    while rows and not rows[-1]:
+        rows.pop()
+    width = max(len(row) for row in rows)
+    return tuple(row.ljust(width) for row in rows)
+
+
+LOGO_LINES: Final[tuple[str, ...]] = _normalized_logo_lines()
+"""The fully-composed rows of the SIPHON logo, each padded to :data:`LOGO_WIDTH`."""
 
 LOGO_WIDTH: Final[int] = len(LOGO_LINES[0])
-LOGO_HEIGHT: Final[int] = 3
+LOGO_HEIGHT: Final[int] = len(LOGO_LINES)
 
 _FRAME_HZ: Final[float] = 30.0
 """Refresh rate — 30 fps balances smoothness against CPU on slow terminals."""
@@ -157,7 +160,7 @@ class LogoWidget(Widget):
                     delay = self._delays[row_index][col_index]
                     row_cells.append(intro_cell(char, intro_elapsed, delay))
                 elif beam_offset is not None:
-                    in_band = cell_in_beam(col_index, row_index, beam_offset)
+                    in_band = cell_in_beam(col_index, row_index, beam_offset, LOGO_HEIGHT)
                     row_cells.append(sweep_cell(char, in_band))
                 else:
                     row_cells.append(Cell(char, CellStyle.BOLD))

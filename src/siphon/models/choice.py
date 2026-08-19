@@ -49,3 +49,31 @@ class DownloadChoice:
     def display(self) -> str:
         """The full row text (prefix + label)."""
         return f"{self.prefix}{self.label}"
+
+
+SubtitleKind = Literal["none", "lang"]
+
+
+@dataclass(frozen=True, slots=True)
+class SubtitleChoice:
+    """One row in the subtitle picker (shown after a video-format is picked).
+
+    ``kind="none"`` means don't embed subtitles at all — it's the default row.
+    ``kind="lang"`` names a subtitle track (``lang`` is the BCP-47 code the
+    extractor advertises; ``auto=True`` marks yt-dlp's automatic captions,
+    which are lower quality but usually the only option for many videos).
+    """
+
+    kind: SubtitleKind
+    label: str
+    lang: str | None = None
+    auto: bool = False
+
+    @property
+    def prefix(self) -> str:
+        """Single-char row icon — matches the ``▶``/``♪`` convention on :class:`DownloadChoice`."""
+        return "⊘ " if self.kind == "none" else "⌇ "
+
+    @property
+    def display(self) -> str:
+        return f"{self.prefix}{self.label}"

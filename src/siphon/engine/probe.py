@@ -55,6 +55,13 @@ def probe_sync(url: str, token: CancellationToken | None = None) -> dict[str, An
         "no_warnings": True,
         "noplaylist": True,
         "logger": _SilentLogger(),
+        # Kept in sync with :mod:`siphon.engine.downloader` — one fallback
+        # player-client for YouTube. A longer ladder gets the session 429'd
+        # by YouTube's rate limiter before extract_info even returns.
+        "extractor_args": {
+            "youtube": {"player_client": ["default", "web_safari"]},
+        },
+        "sleep_interval_requests": 1,
     }
 
     try:

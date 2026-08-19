@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from siphon.ui.widgets.logo import LOGO_LINES, LOGO_WIDTH
+from siphon.ui.widgets.logo import LOGO_HEIGHT, LOGO_LINES, LOGO_WIDTH
 
 
 class TestLogoGeometry:
-    def test_three_rows(self) -> None:
-        assert len(LOGO_LINES) == 3
+    def test_has_rows(self) -> None:
+        assert len(LOGO_LINES) >= 1
+        assert len(LOGO_LINES) == LOGO_HEIGHT
 
     def test_rows_all_same_width(self) -> None:
         widths = {len(line) for line in LOGO_LINES}
@@ -32,7 +33,7 @@ class TestLogoCharacterSet:
 
     ALLOWED: frozenset[str] = frozenset({"█", "▓", "▒", "░", "▀", "▄", " "})
 
-    @pytest.mark.parametrize("line_index", [0, 1, 2])
+    @pytest.mark.parametrize("line_index", range(LOGO_HEIGHT))
     def test_only_allowed_chars(self, line_index: int) -> None:
         line = LOGO_LINES[line_index]
         offenders = {c for c in line if c not in self.ALLOWED}

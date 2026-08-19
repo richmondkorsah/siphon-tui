@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from siphon.models.choice import DownloadChoice
+from siphon.models.choice import DownloadChoice, SubtitleChoice
 from siphon.models.platform import Platform
 
 
@@ -58,6 +58,25 @@ class PickingPhase:
 
 
 @dataclass(frozen=True, slots=True)
+class SubtitlePickingPhase:
+    """After a video format is picked, choose whether to embed subtitles.
+
+    Only entered when the source actually advertises subtitle tracks (manual
+    or auto) *and* the picked choice is a video (mp3 rows skip straight to
+    download). The user picks a :class:`SubtitleChoice` — ``no subtitles``
+    or a language — and the app merges the subtitle opts into the download.
+    """
+
+    url: str
+    title: str
+    platform: Platform
+    choice: DownloadChoice
+    subtitle_choices: list[SubtitleChoice]
+    uploader: str | None = None
+    duration_s: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class DownloadingPhase:
     """Active download with progress (yoinks F14).
 
@@ -87,5 +106,13 @@ class ErrorPhase:
     context: dict[str, str] = field(default_factory=dict)
 
 
-Phase = InputPhase | ProbingPhase | PickingPhase | DownloadingPhase | DonePhase | ErrorPhase
+Phase = (
+    InputPhase
+    | ProbingPhase
+    | PickingPhase
+    | SubtitlePickingPhase
+    | DownloadingPhase
+    | DonePhase
+    | ErrorPhase
+)
 """The full discriminated union of app phases."""

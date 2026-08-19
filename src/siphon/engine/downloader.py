@@ -174,6 +174,18 @@ def download(
         # left on disk by a prior non-cancelled failure, rather than
         # silently depending on that default never changing.
         "continuedl": True,
+        # 403 resilience: give YouTube a single fallback player-client. A
+        # longer ladder (default → tv → web_safari → mweb → ios) burst-fires
+        # so many requests that YouTube 429s the whole session before any
+        # download starts. One fallback is enough for the common
+        # signed-URL-rejected case; the outer retry in
+        # :mod:`siphon.workers.download_worker` handles the rest.
+        "extractor_args": {
+            "youtube": {"player_client": ["default", "web_safari"]},
+        },
+        # Space out consecutive HTTP requests so a multi-client probe /
+        # multi-fragment download doesn't look like a burst to the rate limiter.
+        "sleep_interval_requests": 1,
     }
     if ffmpeg_location:
         opts["ffmpeg_location"] = ffmpeg_location
