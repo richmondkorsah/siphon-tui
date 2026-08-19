@@ -46,7 +46,12 @@ SWEEP_DURATION_S: Final[float] = 1.0
 """How long one sweep takes to cross the logo."""
 
 SWEEP_TILT_CELLS_PER_ROW: Final[float] = 2.0
-"""Horizontal offset of the ``/`` beam per row of the 3-row logo."""
+"""Per-row tilt of the ``/`` beam for a 3-row logo.
+
+For taller logos, :func:`cell_in_beam` scales this so the total tilt span
+between the top and bottom rows stays at ``2 * SWEEP_TILT_CELLS_PER_ROW``
+cells regardless of height — the beam stays visually diagonal without
+running miles ahead of itself on a 9-row logo."""
 
 SWEEP_HALF_WIDTH_CELLS: Final[float] = 2.4
 """Half-width of the beam band; cells within this distance are affected."""
@@ -87,26 +92,25 @@ def compute_intro_delays(width: int, height: int, *, seed: int = 42) -> list[lis
 def intro_cell(final_char: str, elapsed_s: float, delay_s: float) -> Cell:
     """Return the :class:`Cell` for one grid position during the intro.
 
-    Full-cell blocks (``█``) cycle through ``░ → ▒ → █``. Half-blocks
-    (``▀ ▄``) keep their glyph and only vary style.
+    Full blocks (``█``) cycle through ``░ → ▒ → █``. Every other glyph
+    (``░ ▒ ▓ ▀ ▄``) keeps its character and varies only its style — otherwise
+    a light-shade art made of ``░`` cells would flash the heavier ``▒`` glyph
+    mid-shimmer and then snap back down to ``░``, which reads as glitchy.
     """
     if final_char == " ":
         return Cell(" ", CellStyle.BOLD)
 
-    is_half = final_char in ("▀", "▄")
+    if final_char == "█":
+        if elapsed_s < delay_s:
+            return Cell("░", CellStyle.PLACEHOLDER)
+        if elapsed_s < delay_s + SHIMMER_S:
+            return Cell("▒", CellStyle.SHIMMER)
+        return Cell("█", CellStyle.BOLD)
 
     if elapsed_s < delay_s:
-        # Placeholder — pre-reveal shimmer floor.
-        if is_half:
-            return Cell(final_char, CellStyle.PLACEHOLDER)
-        return Cell("░", CellStyle.PLACEHOLDER)
-
+        return Cell(final_char, CellStyle.PLACEHOLDER)
     if elapsed_s < delay_s + SHIMMER_S:
-        # Shimmer — the ``▒`` for full blocks, dim-but-real for half-blocks.
-        if is_half:
-            return Cell(final_char, CellStyle.DIM)
-        return Cell("▒", CellStyle.SHIMMER)
-
+        return Cell(final_char, CellStyle.DIM)
     return Cell(final_char, CellStyle.BOLD)
 
 
@@ -148,14 +152,21 @@ def sweep_cell(final_char: str, in_band: bool) -> Cell:
     return Cell(final_char, CellStyle.DIM)
 
 
-def cell_in_beam(col: int, row: int, beam_offset: float) -> bool:
+def cell_in_beam(col: int, row: int, beam_offset: float, logo_height: int = 3) -> bool:
     """True iff ``(col, row)`` lies within the tilted beam band.
 
-    Beam is a ``/`` — the top row (row 0) sees the beam offset positive and
-    the bottom row (row 2) sees it offset negative, both by
-    :data:`SWEEP_TILT_CELLS_PER_ROW` cells relative to the middle row.
+    Beam is a ``/`` — the top row sees the beam offset positive and the
+    bottom row sees it negative. The total tilt span from top to bottom is
+    ``2 * SWEEP_TILT_CELLS_PER_ROW`` cells regardless of ``logo_height``,
+    so a 9-row logo gets the same diagonal reach as the original 3-row one.
     """
-    beam_center = beam_offset + (1 - row) * SWEEP_TILT_CELLS_PER_ROW
+    if logo_height <= 1:
+        row_tilt = 0.0
+    else:
+        center_row = (logo_height - 1) / 2.0
+        tilt_per_row = 2.0 * SWEEP_TILT_CELLS_PER_ROW / (logo_height - 1)
+        row_tilt = (center_row - row) * tilt_per_row
+    beam_center = beam_offset + row_tilt
     return abs(col - beam_center) < SWEEP_HALF_WIDTH_CELLS
 
 

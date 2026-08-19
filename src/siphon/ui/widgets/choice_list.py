@@ -20,13 +20,22 @@ from textual.binding import Binding, BindingType
 from textual.message import Message
 from textual.widgets import ListItem, ListView, Static
 
-from siphon.models.choice import DownloadChoice
+from siphon.models.choice import DownloadChoice, SubtitleChoice
 
 
 class ChoiceSelected(Message):
     """User picked a :class:`DownloadChoice` from the picker."""
 
     def __init__(self, choice: DownloadChoice, index: int) -> None:
+        super().__init__()
+        self.choice = choice
+        self.index = index
+
+
+class SubtitleChoiceSelected(Message):
+    """User picked a :class:`SubtitleChoice` from the subtitle picker."""
+
+    def __init__(self, choice: SubtitleChoice, index: int) -> None:
         super().__init__()
         self.choice = choice
         self.index = index
@@ -112,3 +121,60 @@ class ChoiceList(ListView):
         item = event.item
         if isinstance(item, ChoiceRow):
             self.post_message(ChoiceSelected(item.choice, self.index or 0))
+
+
+class SubtitleChoiceRow(ListItem):
+    """One row in the SubtitleChoiceList — mirrors :class:`ChoiceRow`'s styling."""
+
+    DEFAULT_CSS = ChoiceRow.DEFAULT_CSS.replace("ChoiceRow", "SubtitleChoiceRow")
+
+    def __init__(self, choice: SubtitleChoice) -> None:
+        super().__init__(Static(self._render_text(choice)))
+        self.choice = choice
+
+    @staticmethod
+    def _render_text(choice: SubtitleChoice) -> Text:
+        text = Text(no_wrap=True, overflow="ellipsis")
+        text.append(choice.prefix, style="bold")
+        text.append(choice.label)
+        return text
+
+
+class SubtitleChoiceList(ListView):
+    """A ListView of :class:`SubtitleChoice` rows — same vim keys as :class:`ChoiceList`."""
+
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding("j", "cursor_down", "down", show=False),
+        Binding("k", "cursor_up", "up", show=False),
+        Binding("enter", "select_cursor", "select", show=False),
+    ]
+
+    DEFAULT_CSS = """
+    SubtitleChoiceList {
+        height: auto;
+        max-height: 12;
+        width: 1fr;
+        background: transparent;
+        scrollbar-size-vertical: 1;
+    }
+    """
+    """Caps at 12 rows so a long language list scrolls in place instead of
+    pushing the shortcuts row off-screen; ``ListView`` handles arrow-key
+    cursor movement and auto-scroll natively."""
+
+    def __init__(self, choices: list[SubtitleChoice], *, id: str | None = None) -> None:
+        super().__init__(
+            *(SubtitleChoiceRow(c) for c in choices),
+            id=id,
+        )
+        self._choices = list(choices)
+
+    @property
+    def choices(self) -> list[SubtitleChoice]:
+        return list(self._choices)
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        event.stop()
+        item = event.item
+        if isinstance(item, SubtitleChoiceRow):
+            self.post_message(SubtitleChoiceSelected(item.choice, self.index or 0))

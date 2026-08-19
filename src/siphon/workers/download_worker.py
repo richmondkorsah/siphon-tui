@@ -26,11 +26,26 @@ from siphon.ui.messages import (
     DownloadFailed,
     DownloadProcessing,
     DownloadProgressTick,
+    DownloadRefreshing,
     DownloadSucceeded,
 )
 
 if TYPE_CHECKING:
     from textual.screen import Screen
+
+
+_STALE_URL_MARKERS = ("http error 403", "forbidden", "expired", "signature")
+"""Substrings in a yt-dlp error that indicate the signed URL went stale.
+
+A stale URL means yt-dlp extracted a signed media URL, but by the time the
+CDN was hit the token had expired (or was rejected by a different edge).
+Re-entering :func:`download` runs a fresh ``extract_info``, which produces
+a new signed URL; ``continuedl=True`` then resumes the ``.part``."""
+
+
+def _looks_stale(message: str) -> bool:
+    lowered = message.lower()
+    return any(marker in lowered for marker in _STALE_URL_MARKERS)
 
 
 async def run_download(
@@ -43,7 +58,12 @@ async def run_download(
     token: CancellationToken,
     screen: Screen[str],
 ) -> None:
-    """Run a download and post the outcome back to ``screen`` as messages."""
+    """Run a download and post the outcome back to ``screen`` as messages.
+
+    Retries the download once on stale-URL errors (403 / expired signature):
+    the second call re-extracts and resumes the ``.part`` file, which is the
+    fix for the common "signed URL expired mid-download" 403.
+    """
     app = screen.app
 
     def on_progress(progress: DownloadProgress) -> None:
@@ -53,25 +73,34 @@ async def run_download(
     def on_processing() -> None:
         app.call_from_thread(screen.post_message, DownloadProcessing())
 
-    try:
-        filepath = await asyncio.to_thread(
-            download,
-            url=url,
-            choice=choice,
-            output_dir=output_dir,
-            ffmpeg_location=ffmpeg_location,
-            on_progress=on_progress,
-            on_processing=on_processing,
-            token=token,
-        )
-    except DownloadCancelled:
-        # UI has already reset — no message needed.
-        return
-    except CleanedYtdlpError as exc:
-        screen.post_message(DownloadFailed(exc.user_message))
-        return
-    except Exception as exc:  # pragma: no cover — safety net
-        screen.post_message(DownloadFailed(str(exc) or "yt-dlp failed"))
-        return
+    stale_retries_left = 1
+    while True:
+        try:
+            filepath = await asyncio.to_thread(
+                download,
+                url=url,
+                choice=choice,
+                output_dir=output_dir,
+                ffmpeg_location=ffmpeg_location,
+                on_progress=on_progress,
+                on_processing=on_processing,
+                token=token,
+            )
+        except DownloadCancelled:
+            # UI has already reset — no message needed.
+            return
+        except CleanedYtdlpError as exc:
+            if stale_retries_left > 0 and _looks_stale(exc.user_message):
+                if token.cancelled:
+                    return
+                stale_retries_left -= 1
+                screen.post_message(DownloadRefreshing())
+                continue
+            screen.post_message(DownloadFailed(exc.user_message))
+            return
+        except Exception as exc:  # pragma: no cover — safety net
+            screen.post_message(DownloadFailed(str(exc) or "yt-dlp failed"))
+            return
+        break
 
     screen.post_message(DownloadSucceeded(filepath, title=title))

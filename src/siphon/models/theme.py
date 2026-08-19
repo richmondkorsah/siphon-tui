@@ -32,6 +32,10 @@ class ThemePalette:
 
     ``auto`` uses ``None`` for background/primary so terminal palette shows
     through (yoinks parity: ``dimSecondary=True``, ``inverseButton=True``).
+
+    ``primary`` is the brand-accent used for the logo, borders, and
+    border-titles. ``foreground`` is body-text; if ``None`` it falls back
+    to ``primary`` (kept for the ``auto`` mode which lets the terminal pick).
     """
 
     mode: ThemeMode
@@ -41,6 +45,9 @@ class ThemePalette:
     accent: str
     dim_secondary: bool
     inverse_button: bool
+    foreground: str | None = None
+    surface: str | None = None
+    panel: str | None = None
 
 
 # Siphon-branded swatches. See plan §Visual Identity for rationale.
@@ -57,9 +64,14 @@ PALETTES: Final[dict[ThemeMode, ThemePalette]] = {
     "light": ThemePalette(
         mode="light",
         background="#fafafa",
-        primary="#0f172a",
-        secondary="#475569",
-        accent="#0369a1",
+        # Brand-blue for logo/borders/accents — distinct from body text so
+        # the chrome doesn't collapse into one dark blob on a light bg.
+        primary="#0369a1",
+        secondary="#64748b",
+        accent="#0284c7",
+        foreground="#0f172a",
+        surface="#f1f5f9",
+        panel="#e2e8f0",
         dim_secondary=False,
         inverse_button=True,
     ),
@@ -69,6 +81,9 @@ PALETTES: Final[dict[ThemeMode, ThemePalette]] = {
         primary="#f1f5f9",
         secondary="#94a3b8",
         accent="#38bdf8",
+        foreground="#f1f5f9",
+        surface="#1e293b",
+        panel="#334155",
         dim_secondary=False,
         inverse_button=True,
     ),

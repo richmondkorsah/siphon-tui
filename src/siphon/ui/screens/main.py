@@ -22,7 +22,7 @@ from textual.widgets import Static
 
 from siphon.config.settings import get_settings
 from siphon.engine.cancellation import CancellationToken, DownloadCancelled
-from siphon.engine.choice_builder import build_choices
+from siphon.engine.choice_builder import apply_subtitle_opts, build_choices, build_subtitle_choices
 from siphon.engine.errors import CleanedYtdlpError
 from siphon.models.choice import DownloadChoice
 from siphon.models.phase import (
@@ -33,6 +33,7 @@ from siphon.models.phase import (
     Phase,
     PickingPhase,
     ProbingPhase,
+    SubtitlePickingPhase,
 )
 from siphon.services import ffmpeg_discovery
 from siphon.services import history as history_service
@@ -44,13 +45,19 @@ from siphon.ui.messages import (
     DownloadFailed,
     DownloadProcessing,
     DownloadProgressTick,
+    DownloadRefreshing,
     DownloadSucceeded,
     HomeRequested,
     SubmitRequested,
     UpdateHintAvailable,
 )
 from siphon.ui.screens.history import HistoryModal
-from siphon.ui.widgets.choice_list import ChoiceList, ChoiceSelected
+from siphon.ui.widgets.choice_list import (
+    ChoiceList,
+    ChoiceSelected,
+    SubtitleChoiceList,
+    SubtitleChoiceSelected,
+)
 from siphon.ui.widgets.download_status import DownloadStatusView
 from siphon.ui.widgets.framed_input import FramedInput
 from siphon.ui.widgets.logo import LogoWidget
@@ -102,7 +109,7 @@ class MainScreen(Screen[str]):
     /* --- chrome rows: logo, tagline, phase body, shortcuts footer -------- */
     #logo-row {
         width: 100%;
-        height: 3;
+        height: auto;
         content-align: center top;
         align: center top;
     }
@@ -344,6 +351,9 @@ class MainScreen(Screen[str]):
         elif isinstance(new, PickingPhase):
             await self._mount_picking_phase(body, new)
             shortcuts.set_hints(self._with_update_hint(self._hints_for_picking()))
+        elif isinstance(new, SubtitlePickingPhase):
+            await self._mount_subtitle_picking_phase(body, new)
+            shortcuts.set_hints(self._with_update_hint(self._hints_for_subtitle_picking()))
         elif isinstance(new, DownloadingPhase):
             await self._mount_downloading_phase(body, new)
             shortcuts.set_hints(self._with_update_hint(self._hints_for_downloading()))
@@ -474,6 +484,47 @@ class MainScreen(Screen[str]):
     def _hints_for_picking(self) -> list[Hint]:
         return [
             Hint(key="↑↓", label="choose"),
+            Hint(key="↵", label="siphon", action="submit_current"),
+            Hint(key="esc", label="back", action="cancel_or_back"),
+            Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
+        ]
+
+    # ------------------------------------------------- subtitle picking phase UI
+    async def _mount_subtitle_picking_phase(
+        self, body: Container, phase: SubtitlePickingPhase
+    ) -> None:
+        """Same two-column layout as picking, right side hosts the subtitle picker."""
+        row = Horizontal(id="picking-body")
+        await body.mount(row)
+
+        left = Vertical(id="picking-left")
+        right = Vertical(id="picking-right")
+        await row.mount(left)
+        await row.mount(right)
+
+        title_text = phase.title.strip() or "(untitled)"
+        await left.mount(Static(title_text, classes="title", id="picking-title", markup=False))
+        meta_parts = [f"▸ {phase.platform.label}"]
+        if phase.duration_s:
+            meta_parts.append(format_duration(phase.duration_s))
+        if phase.uploader:
+            meta_parts.append(phase.uploader)
+        meta_parts.append(phase.choice.display)
+        await left.mount(
+            Static(" · ".join(meta_parts), classes="meta", id="picking-meta")
+        )
+
+        panel = Panel(title="Subtitles", id="picking-panel")
+        await right.mount(panel)
+        subtitle_list = SubtitleChoiceList(phase.subtitle_choices, id="subtitle-list")
+        await panel.mount(subtitle_list)
+
+        self.call_after_refresh(subtitle_list.focus)
+
+    def _hints_for_subtitle_picking(self) -> list[Hint]:
+        return [
+            Hint(key="↑↓", label="scroll"),
             Hint(key="↵", label="siphon", action="submit_current"),
             Hint(key="esc", label="back", action="cancel_or_back"),
             Hint(key="^c", label="quit", action="quit"),
@@ -648,12 +699,47 @@ class MainScreen(Screen[str]):
         self.action_cancel_or_back()
 
     def on_choice_selected(self, event: ChoiceSelected) -> None:
-        """A row was picked in the ChoiceList — launch the download worker."""
+        """A row was picked in the ChoiceList.
+
+        For video choices with subtitles advertised on the info dict, step
+        through the subtitle picker first; otherwise launch the download
+        directly (audio-only rows never carry embedded subtitles, and skipping
+        the picker when there are no tracks avoids a no-op phase).
+        """
         event.stop()
         current = self.phase
         if not isinstance(current, PickingPhase):
             return
 
+        subtitle_choices = build_subtitle_choices(current.info)
+        picker_useful = event.choice.kind == "video" and len(subtitle_choices) > 1
+        if picker_useful:
+            self.phase = SubtitlePickingPhase(
+                url=current.url,
+                title=current.title,
+                platform=current.platform,
+                choice=event.choice,
+                subtitle_choices=subtitle_choices,
+                uploader=current.uploader,
+                duration_s=current.duration_s,
+            )
+            return
+
+        self._launch_download_from_choice(current.url, current.title, event.choice)
+
+    def on_subtitle_choice_selected(self, event: SubtitleChoiceSelected) -> None:
+        """User picked a subtitle option — merge it into the download and go."""
+        event.stop()
+        current = self.phase
+        if not isinstance(current, SubtitlePickingPhase):
+            return
+        merged = apply_subtitle_opts(current.choice, event.choice)
+        self._launch_download_from_choice(current.url, current.title, merged)
+
+    def _launch_download_from_choice(
+        self, url: str, title: str, choice: DownloadChoice
+    ) -> None:
+        """Shared tail of the picker → download hop: resolve output dir, launch."""
         settings = get_settings()
         output_dir = settings.download_dir
         override = getattr(self.app, "output_dir_override", None)
@@ -662,9 +748,9 @@ class MainScreen(Screen[str]):
 
         self._start_download(
             _DownloadArgs(
-                url=current.url,
-                title=current.title,
-                choice=event.choice,
+                url=url,
+                title=title,
+                choice=choice,
                 output_dir=output_dir,
                 ffmpeg_location=ffmpeg_discovery.find_ffmpeg(),
             )
@@ -715,6 +801,17 @@ class MainScreen(Screen[str]):
         except NoMatches:
             return
         view.mark_processing()
+
+    def on_download_refreshing(self, event: DownloadRefreshing) -> None:
+        """Signed URL went stale — worker is re-extracting to get a fresh one."""
+        event.stop()
+        if not isinstance(self.phase, DownloadingPhase):
+            return
+        try:
+            view = self.query_one(DownloadStatusView)
+        except NoMatches:
+            return
+        view.mark_refreshing()
 
     def on_download_succeeded(self, event: DownloadSucceeded) -> None:
         """Download finished; switch to the done screen and remember the outcome."""
@@ -770,6 +867,13 @@ class MainScreen(Screen[str]):
             except NoMatches:
                 return
             choice_list.action_select_cursor()
+            return
+        if isinstance(self.phase, SubtitlePickingPhase):
+            try:
+                sub_list = self.query_one(SubtitleChoiceList)
+            except NoMatches:
+                return
+            sub_list.action_select_cursor()
             return
         if isinstance(self.phase, DonePhase):
             self.phase = InputPhase()

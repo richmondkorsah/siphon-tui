@@ -42,7 +42,13 @@ def _build_theme(mode: ThemeMode) -> Theme:
 
     if palette.background is not None:
         kwargs["background"] = palette.background
-        kwargs["foreground"] = palette.primary
+        # Distinct body-text color; falls back to primary for the ``auto``
+        # mode, where the terminal picks.
+        kwargs["foreground"] = palette.foreground or palette.primary
+    if palette.surface is not None:
+        kwargs["surface"] = palette.surface
+    if palette.panel is not None:
+        kwargs["panel"] = palette.panel
 
     return Theme(**kwargs)  # type: ignore[arg-type]
 
