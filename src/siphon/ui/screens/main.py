@@ -511,9 +511,7 @@ class MainScreen(Screen[str]):
         if phase.uploader:
             meta_parts.append(phase.uploader)
         meta_parts.append(phase.choice.display)
-        await left.mount(
-            Static(" · ".join(meta_parts), classes="meta", id="picking-meta")
-        )
+        await left.mount(Static(" · ".join(meta_parts), classes="meta", id="picking-meta"))
 
         panel = Panel(title="Subtitles", id="picking-panel")
         await right.mount(panel)
@@ -736,9 +734,7 @@ class MainScreen(Screen[str]):
         merged = apply_subtitle_opts(current.choice, event.choice)
         self._launch_download_from_choice(current.url, current.title, merged)
 
-    def _launch_download_from_choice(
-        self, url: str, title: str, choice: DownloadChoice
-    ) -> None:
+    def _launch_download_from_choice(self, url: str, title: str, choice: DownloadChoice) -> None:
         """Shared tail of the picker → download hop: resolve output dir, launch."""
         settings = get_settings()
         output_dir = settings.download_dir
