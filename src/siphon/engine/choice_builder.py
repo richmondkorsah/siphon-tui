@@ -105,7 +105,14 @@ def build_choices(info: dict[str, Any]) -> list[DownloadChoice]:
 
         heights = sorted(by_height.keys(), reverse=True)[:MAX_VIDEO_CHOICES]
         for height in heights:
-            best = max(by_height[height], key=_score_video)
+            bucket = by_height[height]
+            # Prefer formats that report a size — YouTube's HLS (m3u8_native)
+            # formats never carry filesize/filesize_approx, so scoring alone
+            # can pick a sizeless format over a sized one at the same height.
+            # Only fall back to the sizeless pool when nothing in the bucket
+            # has a size at all.
+            sized = [fmt for fmt in bucket if _format_size(fmt) is not None]
+            best = max(sized or bucket, key=_score_video)
             size = _combined_size(best, best_audio_size)
             label = _video_label(height, size)
             choices.append(
@@ -155,9 +162,18 @@ def _is_audio_only(fmt: dict[str, Any]) -> bool:
 
 
 def _has_video_height(fmt: dict[str, Any]) -> bool:
-    """True iff ``fmt`` has a positive numeric height."""
+    """True iff ``fmt`` has a positive numeric height and an actual video codec.
+
+    Excludes storyboard/thumbnail sprite tracks (``sb0`` through ``sb3``,
+    ``vcodec: "none"``, ``protocol: "mhtml"``) - yt-dlp reports a ``height``
+    on those too, and without this check one could knock a real quality
+    level out of the top-:data:`MAX_VIDEO_CHOICES` heights.
+    """
     height = fmt.get("height")
-    return isinstance(height, (int, float)) and height > 0
+    if not (isinstance(height, (int, float)) and height > 0):
+        return False
+    vcodec = fmt.get("vcodec")
+    return bool(vcodec) and vcodec != "none"
 
 
 # ---------------------------------------------------------------------------
