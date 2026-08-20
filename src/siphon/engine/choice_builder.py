@@ -40,7 +40,6 @@ from siphon.config.constants import MAX_VIDEO_CHOICES
 from siphon.models.choice import DownloadChoice, SubtitleChoice
 from siphon.utils.format import format_bytes
 
-
 # Common subtitle language codes → human-readable names. Only used when the
 # extractor didn't ship a ``name`` for the track; falls back to the code itself.
 _LANG_NAMES: dict[str, str] = {
