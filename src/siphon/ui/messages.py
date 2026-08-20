@@ -74,7 +74,11 @@ class DownloadProcessing(Message):
 
 
 class DownloadRefreshing(Message):
-    """A stale-info retry is starting — swap the status text to "link expired…"."""
+    """An automatic retry is starting — swap the status text to explain why."""
+
+    def __init__(self, reason: str = "link expired — grabbing a fresh one…") -> None:
+        super().__init__()
+        self.reason = reason
 
 
 class DownloadSucceeded(Message):

@@ -42,10 +42,25 @@ CDN was hit the token had expired (or was rejected by a different edge).
 Re-entering :func:`download` runs a fresh ``extract_info``, which produces
 a new signed URL; ``continuedl=True`` then resumes the ``.part``."""
 
+_RATE_LIMIT_MARKERS = ("http error 429", "too many requests")
+"""Substrings indicating YouTube rate-limited a request — most commonly the
+translation endpoint behind a non-English subtitle track, which is throttled
+far more aggressively than the video/audio CDN. Unlike a stale URL, retrying
+*immediately* would just get 429'd again, so this path backs off first."""
+
+_RATE_LIMIT_BACKOFF_S = 5.0
+"""Pause before retrying a rate-limited download — long enough that YouTube's
+short-window limiter has typically reset."""
+
 
 def _looks_stale(message: str) -> bool:
     lowered = message.lower()
     return any(marker in lowered for marker in _STALE_URL_MARKERS)
+
+
+def _looks_rate_limited(message: str) -> bool:
+    lowered = message.lower()
+    return any(marker in lowered for marker in _RATE_LIMIT_MARKERS)
 
 
 async def run_download(
@@ -63,6 +78,11 @@ async def run_download(
     Retries the download once on stale-URL errors (403 / expired signature):
     the second call re-extracts and resumes the ``.part`` file, which is the
     fix for the common "signed URL expired mid-download" 403.
+
+    Separately, retries once on a rate-limit error (429 — most often the
+    translation endpoint behind a non-English subtitle track) after a short
+    backoff: retrying *immediately*, like the stale-URL path does, would
+    just get 429'd again since the limiter hasn't had time to reset.
     """
     app = screen.app
 
@@ -74,6 +94,7 @@ async def run_download(
         app.call_from_thread(screen.post_message, DownloadProcessing())
 
     stale_retries_left = 1
+    rate_limit_retries_left = 1
     while True:
         try:
             filepath = await asyncio.to_thread(
@@ -90,6 +111,17 @@ async def run_download(
             # UI has already reset — no message needed.
             return
         except CleanedYtdlpError as exc:
+            if rate_limit_retries_left > 0 and _looks_rate_limited(exc.user_message):
+                if token.cancelled:
+                    return
+                rate_limit_retries_left -= 1
+                screen.post_message(
+                    DownloadRefreshing(reason="rate limited — pausing before retry…")
+                )
+                await asyncio.sleep(_RATE_LIMIT_BACKOFF_S)
+                if token.cancelled:
+                    return
+                continue
             if stale_retries_left > 0 and _looks_stale(exc.user_message):
                 if token.cancelled:
                     return

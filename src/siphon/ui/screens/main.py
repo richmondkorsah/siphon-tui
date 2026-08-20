@@ -63,6 +63,7 @@ from siphon.ui.widgets.framed_input import FramedInput
 from siphon.ui.widgets.logo import LogoWidget
 from siphon.ui.widgets.panel import Panel
 from siphon.ui.widgets.shortcuts import Hint, ShortcutsWidget
+from siphon.ui.widgets.spinner import SpinnerLabel
 from siphon.ui.widgets.tagline import TaglineStrip
 from siphon.utils.format import format_duration, shorten_path, truncate
 from siphon.workers.download_worker import run_download
@@ -429,7 +430,7 @@ class MainScreen(Screen[str]):
             id="framed-input",
         )
         await body.mount(frame)
-        await body.mount(Static(f"⠋ {phase.status}", classes="subhint", id="probing-status"))
+        await body.mount(SpinnerLabel(phase.status, classes="subhint", id="probing-status"))
 
         if not frame.is_mounted:
             return
@@ -799,7 +800,7 @@ class MainScreen(Screen[str]):
         view.mark_processing()
 
     def on_download_refreshing(self, event: DownloadRefreshing) -> None:
-        """Signed URL went stale — worker is re-extracting to get a fresh one."""
+        """Worker started an automatic retry (stale URL or rate limit)."""
         event.stop()
         if not isinstance(self.phase, DownloadingPhase):
             return
@@ -807,7 +808,7 @@ class MainScreen(Screen[str]):
             view = self.query_one(DownloadStatusView)
         except NoMatches:
             return
-        view.mark_refreshing()
+        view.mark_refreshing(event.reason)
 
     def on_download_succeeded(self, event: DownloadSucceeded) -> None:
         """Download finished; switch to the done screen and remember the outcome."""

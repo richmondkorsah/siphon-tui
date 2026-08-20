@@ -186,6 +186,12 @@ def download(
         # Space out consecutive HTTP requests so a multi-client probe /
         # multi-fragment download doesn't look like a burst to the rate limiter.
         "sleep_interval_requests": 1,
+        # Non-English subtitle tracks are usually served through YouTube's
+        # on-the-fly translation endpoint rather than a plain static file,
+        # which is throttled far more aggressively than the CDN — without a
+        # pause here that request routinely comes back 429, even though the
+        # (unthrottled-by-us) English/native track right next to it is fine.
+        "sleep_interval_subtitles": 3,
     }
     if ffmpeg_location:
         opts["ffmpeg_location"] = ffmpeg_location

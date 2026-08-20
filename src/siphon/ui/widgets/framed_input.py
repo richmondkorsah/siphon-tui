@@ -1,36 +1,24 @@
-"""FramedInput — a bordered text field with a forged "siphon" button (yoinks F23).
+"""FramedInput — a bordered text field with a "siphon" submit button (yoinks F23).
 
 The visual composition:
 
 .. code-block:: text
 
-    ╭─ Paste a link ─────╮ ▄▄▄▄▄▄▄▄▄▄
-    │ https://youtu.be… │   siphon
-    ╰────────────────────╯ ▀▀▀▀▀▀▀▀▀▀
+    ╭─ Paste a link ─────╮ ╭────────╮
+    │ https://youtu.be… │ │ siphon │
+    ╰────────────────────╯ ╰────────╯
 
-The frame uses Textual's native ``border: round`` with a ``border_title``
-(reproducing yoinks' hand-drawn title-on-border trick). The forged button is
-a three-row :class:`~textual.widgets.Static` with half-block top / bottom
-rows so it visually connects with the horizontal border of the frame.
-
-Two visual variants (yoinks F23):
-
-**Bright** (default). Top / bottom rows are bold ``▄`` / ``▀`` in the
-primary colour; middle row is a *reversed* label — background painted
-primary, foreground the panel's background. This mirrors yoinks'
-``inverseButton=True`` mode and reads as a solid solid button on every
-terminal that supports SGR reverse.
-
-**Dim** (probing indicator). Every row is dim primary; the middle row is
-NOT reversed, only bold on the panel background. Yoinks documented why:
-some terminals apply ``dim`` to the SGR-reversed foreground and NOT to
-the background, so the button splits into gray/white/gray bands. Dropping
-the reverse in dim mode keeps the button as a coherent ghost outline.
+Both boxes use Textual's native ``border: round`` so they read as one
+matched pair regardless of terminal/font — the button used to be hand-drawn
+from half-block (``▄``/``▀``) rows to *simulate* a filled slab, but that
+approach is terminal-fragile (some terminals apply ``dim`` to a reversed
+foreground and not the background, splitting the middle row from its rails
+into visibly disconnected bars). A plain matching border sidesteps the
+whole class of bug.
 """
 
 from __future__ import annotations
 
-from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
@@ -40,21 +28,23 @@ from textual.widgets import Static
 from siphon.ui.messages import SubmitRequested
 from siphon.ui.widgets.text_input import SiphonTextInput
 
-# Padding cells added inside the forged button to give the label breathing room.
-_BUTTON_INNER_PADDING = 2
-
 
 class ForgedButton(Static):
-    """The three-row half-block button that sits flush against :class:`FramedInput`."""
+    """The bordered submit button that sits flush against :class:`FramedInput`."""
 
     DEFAULT_CSS = """
     ForgedButton {
         width: auto;
         height: 3;
+        border: round $primary;
+        padding: 0 2;
         color: $primary;
-        padding: 0;
-        margin: 0;
-        content-align: left top;
+        text-style: bold;
+        content-align: center middle;
+    }
+    ForgedButton.-dim {
+        color: $text-muted;
+        text-style: dim bold;
     }
     """
 
@@ -62,41 +52,11 @@ class ForgedButton(Static):
     """When True, render as a ghost outline (probing state)."""
 
     def __init__(self, label: str, *, id: str | None = None) -> None:
-        super().__init__(id=id)
-        self._label = label
-        self._width = len(label) + _BUTTON_INNER_PADDING * 2
+        super().__init__(label, id=id)
 
-    def render(self) -> Text:
-        """Compose the three-row Rich Text for the button.
-
-        The dim variant deliberately drops the ``reverse`` from the middle
-        row — see the module docstring for the terminal-quirk background.
-        """
-        text = Text(no_wrap=True, overflow="crop")
-        label = f"{' ' * _BUTTON_INNER_PADDING}{self._label}{' ' * _BUTTON_INNER_PADDING}"
-
-        if self.dim:
-            # Ghost outline: every row bold + dim primary. No reverse.
-            row_style = "bold dim"
-            text.append("▄" * self._width, style=row_style)
-            text.append("\n")
-            text.append(label, style=row_style)
-            text.append("\n")
-            text.append("▀" * self._width, style=row_style)
-        else:
-            # Bright: top/bottom rails bold primary; middle reversed to
-            # paint a solid slab. Reverse + bold reads cleanly on every
-            # terminal we've seen (unlike reverse + dim).
-            text.append("▄" * self._width, style="bold")
-            text.append("\n")
-            text.append(label, style="reverse bold")
-            text.append("\n")
-            text.append("▀" * self._width, style="bold")
-        return text
-
-    def watch_dim(self, _old: bool, _new: bool) -> None:
-        """Repaint when the dim state flips."""
-        self.refresh()
+    def watch_dim(self, _old: bool, new: bool) -> None:
+        """Toggle the ghost-outline style when the dim state flips."""
+        self.set_class(new, "-dim")
 
     def on_click(self) -> None:
         """Clicking the button submits the current input value."""
@@ -139,7 +99,7 @@ class FramedInput(Widget):
         height: 1;
     }
     FramedInput > ForgedButton {
-        margin-left: 0;
+        margin-left: 1;
     }
     """
 
