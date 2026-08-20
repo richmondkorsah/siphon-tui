@@ -29,6 +29,10 @@ Paste a URL into the field — Siphon auto-submits. Pick a quality
   retry — no re-probe, no restarting the file from zero.
 - **Chapter markers.** Video downloads embed the source's chapters, when the
   site provides them.
+- **Subtitle picker.** Pick from available subtitle tracks and embed them
+  alongside the video.
+- **403-resilient.** A stale signed URL (expired mid-download) triggers one
+  automatic re-extract-and-resume, no manual retry needed.
 - **Terminal-friendly.** Textual handles alt-screen enter/exit even on crash.
 - **Searchable history.** `ctrl+r` opens a fuzzy-filterable list of past URLs.
 - **Command palette.** `ctrl+p` lists everything Siphon can do.
