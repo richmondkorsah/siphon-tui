@@ -78,30 +78,29 @@ class TestInputPhaseAcrossThemes:
 
 
 class TestForgedButtonInvariants:
-    async def test_dim_flip_changes_styles(self) -> None:
-        """Toggling dim swaps the ForgedButton to its dim style palette."""
+    async def test_dim_flip_toggles_ghost_class(self) -> None:
+        """Toggling dim swaps the ForgedButton to its ghost-outline style."""
         app = SiphonApp()
         async with app.run_test(size=(100, 30)) as pilot:
             await pilot.pause()
             framed = app.screen.query_one(FramedInput)
             button = framed.button
 
-            bright_styles = {str(s.style) for s in button.render().spans}
+            assert not button.has_class("-dim")
             framed.set_dim(True)
             await pilot.pause()
-            dim_styles = {str(s.style) for s in button.render().spans}
-            assert bright_styles != dim_styles
+            assert button.has_class("-dim")
 
-    async def test_bright_uses_reverse_dim_does_not(self) -> None:
+    async def test_label_unchanged_by_dim(self) -> None:
+        """Dim only changes styling (via CSS), never the rendered label."""
         app = SiphonApp()
         async with app.run_test(size=(100, 30)) as pilot:
             await pilot.pause()
             button = app.screen.query_one(ForgedButton)
-            bright_styles = [str(s.style) for s in button.render().spans]
+            bright_label = str(button.render())
             button.dim = True
-            dim_styles = [str(s.style) for s in button.render().spans]
-            assert any("reverse" in s for s in bright_styles)
-            assert not any("reverse" in s for s in dim_styles)
+            dim_label = str(button.render())
+            assert bright_label == dim_label == "siphon"
 
 
 class TestLogoAnimation:

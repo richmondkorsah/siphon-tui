@@ -24,6 +24,7 @@ from textual.widgets import Static
 
 from siphon.models.progress import DownloadProgress
 from siphon.ui.widgets.progress_bar import ProgressBar
+from siphon.ui.widgets.spinner import SPINNER_FRAMES, SPINNER_INTERVAL_S
 from siphon.utils.format import format_bytes, format_eta, format_speed
 
 
@@ -63,6 +64,8 @@ class DownloadStatusView(Widget):
         self._progress: DownloadProgress | None = None
         self._processing: bool = False
         self._refreshing: bool = False
+        self._refreshing_reason: str = "link expired — grabbing a fresh one…"
+        self._spinner_frame: int = 0
 
     def compose(self) -> ComposeResult:
         """Yield the three fixed-height rows."""
@@ -72,6 +75,21 @@ class DownloadStatusView(Widget):
             yield Static("", id="status-gap")
             with Center(id="status-meta-row"):
                 yield Static(self._meta_text(), id="status-meta")
+
+    def on_mount(self) -> None:
+        self.set_interval(SPINNER_INTERVAL_S, self._advance_spinner)
+
+    def _advance_spinner(self) -> None:
+        """Tick the spinner glyph — only repaints while one is actually shown."""
+        self._spinner_frame = (self._spinner_frame + 1) % len(SPINNER_FRAMES)
+        if self._is_spinning():
+            self._refresh_rows()
+
+    def _is_spinning(self) -> bool:
+        """True iff the current meta row is showing a spinner glyph."""
+        if self._processing:
+            return True
+        return self._progress is None or not self._progress.has_total
 
     # ------------------------------------------------------ external state
     def apply_progress(self, progress: DownloadProgress) -> None:
@@ -87,9 +105,10 @@ class DownloadStatusView(Widget):
         self._refreshing = False
         self._refresh_rows()
 
-    def mark_refreshing(self) -> None:
-        """Stale-info retry started — swap the "starting" text for "link expired"."""
+    def mark_refreshing(self, reason: str = "link expired — grabbing a fresh one…") -> None:
+        """An automatic retry started — swap the "starting" text to explain why."""
         self._refreshing = True
+        self._refreshing_reason = reason
         self._refresh_rows()
 
     # ------------------------------------------------------ render helpers
@@ -112,12 +131,12 @@ class DownloadStatusView(Widget):
     def _meta_text(self) -> Text:
         """Compose the meta row for the current state."""
         if self._processing:
-            return _spinner_row("processing…")
+            return self._spinner_row("processing…")
 
         p = self._progress
         if p is None:
-            return _spinner_row(
-                "link expired — grabbing a fresh one…" if self._refreshing else "starting download…"
+            return self._spinner_row(
+                self._refreshing_reason if self._refreshing else "starting download…"
             )
 
         if p.has_total:
@@ -138,7 +157,7 @@ class DownloadStatusView(Widget):
             bytes_str = format_bytes(p.downloaded_bytes).rjust(8)
             speed_str = format_speed(p.speed).ljust(10) if p.speed else " " * 10
             text = Text(no_wrap=True, overflow="crop")
-            text.append("⠋ ", style="bold")
+            text.append(f"{SPINNER_FRAMES[self._spinner_frame]} ", style="bold")
             text.append("downloading…", style="dim")
             text.append("  ")
             text.append(bytes_str)
@@ -146,14 +165,13 @@ class DownloadStatusView(Widget):
             text.append(speed_str)
             return text
 
-        return _spinner_row(
+        return self._spinner_row(
             "link expired — grabbing a fresh one…" if self._refreshing else "starting download…"
         )
 
-
-def _spinner_row(label: str) -> Text:
-    """A single row: ``⠋ label`` with the spinner glyph bolded."""
-    text = Text(no_wrap=True, overflow="crop")
-    text.append("⠋ ", style="bold")
-    text.append(label)
-    return text
+    def _spinner_row(self, label: str) -> Text:
+        """A single row: ``⠋ label`` with the spinner glyph bolded, mid-spin."""
+        text = Text(no_wrap=True, overflow="crop")
+        text.append(f"{SPINNER_FRAMES[self._spinner_frame]} ", style="bold")
+        text.append(label)
+        return text

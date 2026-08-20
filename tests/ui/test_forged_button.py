@@ -1,64 +1,42 @@
 """Regression tests for :class:`siphon.ui.widgets.framed_input.ForgedButton`.
 
-These focus on the two visual variants (bright / dim) and the terminal-
-quirk the ``dim`` variant works around: `reverse + dim` interacting badly
-on some emulators. The dim variant deliberately drops the ``reverse`` so
-the button reads as a coherent ghost outline rather than banding.
+The button used to be hand-drawn from three rows of half-block characters
+to simulate a filled slab — terminal-fragile (some emulators apply ``dim``
+to a reversed foreground and not the background, splitting the button into
+visibly disconnected bars). It's now a plain ``border: round`` box, matching
+the input frame it sits next to and the app's other button (``#done-button``).
+These tests cover the dim/bright CSS-class toggle and click behaviour.
 """
 
 from __future__ import annotations
 
 import pytest
-from rich.text import Text
 
 from siphon.ui.widgets.framed_input import ForgedButton
 
 
 class TestBrightVariant:
-    def test_three_rows(self) -> None:
+    def test_renders_label(self) -> None:
         button = ForgedButton("siphon")
-        text = button.render()
-        # Rich Text stores line breaks as literal "\n" characters.
-        assert str(text).count("\n") == 2
+        assert str(button.render()) == "siphon"
 
-    def test_middle_row_uses_reverse(self) -> None:
+    def test_not_dim_by_default(self) -> None:
         button = ForgedButton("siphon")
-        text: Text = button.render()
-        # Find any span with the "reverse bold" style — Rich stores styles per span.
-        styles = [span.style for span in text.spans]
-        assert any("reverse" in str(style) for style in styles)
-
-    def test_top_and_bottom_rails_are_halfblocks(self) -> None:
-        button = ForgedButton("siphon")
-        rendered = str(button.render())
-        rows = rendered.split("\n")
-        assert set(rows[0]) == {"▄"}
-        assert set(rows[2]) == {"▀"}
-
-    def test_middle_row_contains_label(self) -> None:
-        button = ForgedButton("siphon")
-        rows = str(button.render()).split("\n")
-        assert "siphon" in rows[1]
+        assert button.dim is False
+        assert not button.has_class("-dim")
 
 
 class TestDimVariant:
-    def test_no_reverse_in_dim_state(self) -> None:
-        """The dim variant explicitly avoids ``reverse`` to dodge terminal band-splitting."""
+    def test_dim_adds_ghost_class(self) -> None:
         button = ForgedButton("siphon")
         button.dim = True
-        text: Text = button.render()
-        styles = [str(span.style) for span in text.spans]
-        assert not any(
-            "reverse" in style for style in styles
-        ), "dim button re-introduced 'reverse' — terminals will band-split it"
+        assert button.has_class("-dim")
 
-    def test_all_rows_carry_dim(self) -> None:
+    def test_undim_removes_ghost_class(self) -> None:
         button = ForgedButton("siphon")
         button.dim = True
-        text: Text = button.render()
-        styles = [str(span.style) for span in text.spans]
-        # Every stylised span should include the dim modifier.
-        assert all("dim" in style for style in styles)
+        button.dim = False
+        assert not button.has_class("-dim")
 
     def test_click_ignored_in_dim(self, monkeypatch: pytest.MonkeyPatch) -> None:
         button = ForgedButton("siphon")
@@ -68,11 +46,16 @@ class TestDimVariant:
         button.on_click()
         assert fired == []
 
+    def test_click_fires_when_bright(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        button = ForgedButton("siphon")
+        fired: list[object] = []
+        monkeypatch.setattr(button, "post_message", fired.append)
+        button.on_click()
+        assert len(fired) == 1
+
 
 class TestWidthMath:
     @pytest.mark.parametrize("label", ["siphon", "yoink", "x"])
-    def test_button_width_scales_with_label(self, label: str) -> None:
+    def test_label_preserved(self, label: str) -> None:
         button = ForgedButton(label)
-        rendered = str(button.render()).split("\n")
-        # +4 for the 2-cell padding on each side.
-        assert len(rendered[0]) == len(label) + 4
+        assert str(button.render()) == label
