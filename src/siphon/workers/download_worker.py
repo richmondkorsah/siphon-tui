@@ -112,8 +112,10 @@ async def run_download(
             return
         except CleanedYtdlpError as exc:
             if rate_limit_retries_left > 0 and _looks_rate_limited(exc.user_message):
-                if token.cancelled:
-                    return
+                # No pre-sleep cancellation check here (unlike the stale-URL
+                # branch below): the check that matters is the one *after*
+                # the sleep, since that's the window the user could actually
+                # cancel in.
                 rate_limit_retries_left -= 1
                 screen.post_message(
                     DownloadRefreshing(reason="rate limited — pausing before retry…")
