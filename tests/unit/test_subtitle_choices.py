@@ -130,7 +130,5 @@ class TestApplySubtitleOpts:
     def test_original_choice_not_mutated(self) -> None:
         choice = _sample_choice()
         before = dict(choice.ytdlp_opts)
-        apply_subtitle_opts(
-            choice, SubtitleChoice(kind="lang", label="English (en)", lang="en")
-        )
+        apply_subtitle_opts(choice, SubtitleChoice(kind="lang", label="English (en)", lang="en"))
         assert choice.ytdlp_opts == before
