@@ -132,6 +132,13 @@ class SiphonTextInput(Input):
         stops tracking a recalled entry — subsequent ``↑`` restarts from the
         current value as the draft.
         """
+        if event.key in ("?", "question_mark"):
+            # The user explicitly wants ? to be the help shortcut globally,
+            # so we must intercept it before Input treats it as text.
+            self.app.action_show_help()  # type: ignore[attr-defined]
+            event.stop()
+            return
+
         if event.key not in ("up", "down", "tab", "enter", "escape"):
             self._history_pos = -1
         await super()._on_key(event)

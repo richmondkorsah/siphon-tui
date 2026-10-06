@@ -26,10 +26,10 @@ def theme_name(mode: ThemeMode) -> str:
     return f"{_THEME_PREFIX}{mode}"
 
 
-def _build_theme(mode: ThemeMode) -> Theme:
+def _build_theme(mode: ThemeMode, app_is_dark: bool = True) -> Theme:
     """Construct a :class:`textual.theme.Theme` from the palette definition."""
     palette = PALETTES[mode]
-    is_dark = mode == "dark"
+    is_dark = app_is_dark if mode == "auto" else (mode == "dark")
 
     kwargs: dict[str, str | bool] = {
         "name": theme_name(mode),
@@ -53,6 +53,6 @@ def _build_theme(mode: ThemeMode) -> Theme:
     return Theme(**kwargs)  # type: ignore[arg-type]
 
 
-def all_themes() -> list[Theme]:
+def all_themes(app_is_dark: bool = True) -> list[Theme]:
     """Return the three Siphon themes, in cycle order."""
-    return [_build_theme(mode) for mode in THEME_MODES]
+    return [_build_theme(mode, app_is_dark) for mode in THEME_MODES]

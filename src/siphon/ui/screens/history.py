@@ -57,14 +57,19 @@ class HistoryRow(ListItem):
 
 
 def _render_row(entry: HistoryEntry) -> Text:
-    """Compose ``url  · platform · title`` styled Rich text."""
+    """Compose ``title  · platform · url`` styled Rich text."""
     text = Text(no_wrap=True, overflow="ellipsis")
-    text.append(entry.url, style="")
+    primary = entry.title if entry.title else entry.url
+    text.append(primary, style="")
+
     tail_parts: list[str] = []
     if entry.platform:
         tail_parts.append(entry.platform)
+
     if entry.title:
-        tail_parts.append(entry.title)
+        # Title is primary, put the url in the tail
+        tail_parts.append(entry.url)
+
     if tail_parts:
         text.append("  · ", style="dim")
         text.append(" · ".join(tail_parts), style="dim")

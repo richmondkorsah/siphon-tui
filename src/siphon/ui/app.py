@@ -55,8 +55,8 @@ class SiphonApp(App[str]):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("ctrl+c", "quit", "quit", show=False, priority=True),
         Binding("ctrl+t", "cycle_theme", "cycle theme", show=False),
-        # Discoverable command-palette shortcut in addition to Textual's default.
-        Binding("ctrl+p", "command_palette", "command palette", show=False),
+        Binding("ctrl+p", "toggle_command_palette", "command palette", show=False),
+        Binding("?", "show_help", "help", show=False, priority=True),
     ]
 
     # Register our custom provider alongside Textual's built-in system commands.
@@ -101,6 +101,17 @@ class SiphonApp(App[str]):
         message = status.hint_message
         if message and self.screen is not None:
             self.screen.post_message(UpdateHintAvailable(message))
+
+    def action_show_help(self) -> None:
+        from siphon.ui.screens.help import HelpModal
+
+        self.push_screen(HelpModal())
+
+    def action_toggle_command_palette(self) -> None:
+        if self.screen.__class__.__name__ == "CommandPalette":
+            self.pop_screen()
+        elif hasattr(self, "action_command_palette"):
+            self.action_command_palette()
 
     def action_cycle_theme(self) -> None:
         """Rotate auto → light → dark → auto, apply, and persist."""

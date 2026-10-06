@@ -64,8 +64,6 @@ PALETTES: Final[dict[ThemeMode, ThemePalette]] = {
     "light": ThemePalette(
         mode="light",
         background="#fafafa",
-        # Brand-blue for logo/borders/accents — distinct from body text so
-        # the chrome doesn't collapse into one dark blob on a light bg.
         primary="#0369a1",
         secondary="#64748b",
         accent="#0284c7",

@@ -267,6 +267,7 @@ class MainScreen(Screen[str]):
         Binding("enter", "submit_current", "submit", show=False, priority=False),
         # ^r opens the searchable history modal.
         Binding("ctrl+r", "open_history", "history", show=False),
+        Binding("ctrl+s", "open_settings", "settings", show=False),
     ]
 
     phase: reactive[Phase] = reactive(InputPhase(), layout=True)
@@ -311,6 +312,9 @@ class MainScreen(Screen[str]):
         self.history = history_service.load_history()
 
         if self._initial_url and is_probably_url(self._initial_url):
+            self.history = history_service.add_to_history(
+                self._initial_url, existing=list(self.history)
+            )
             platform = detect_platform(self._initial_url)
             self.phase = ProbingPhase(url=self._initial_url, platform=platform)
             self._probe_token = CancellationToken()
@@ -415,7 +419,10 @@ class MainScreen(Screen[str]):
             hints.append(Hint(key="↑", label="history"))
         hints.extend(
             [
+                Hint(key="^r", label="search", action="open_history"),
+                Hint(key="?", label="help", action="show_help"),
                 Hint(key="^c", label="quit", action="quit"),
+                Hint(key="^s", label="settings", action="open_settings"),
                 Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
             ]
         )
@@ -444,7 +451,9 @@ class MainScreen(Screen[str]):
     def _hints_for_probing(self) -> list[Hint]:
         return [
             Hint(key="esc", label="cancel", action="cancel_or_back"),
+            Hint(key="?", label="help", action="show_help"),
             Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^s", label="settings", action="open_settings"),
             Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
         ]
 
@@ -487,7 +496,9 @@ class MainScreen(Screen[str]):
             Hint(key="↑↓", label="choose"),
             Hint(key="↵", label="siphon", action="submit_current"),
             Hint(key="esc", label="back", action="cancel_or_back"),
+            Hint(key="?", label="help", action="show_help"),
             Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^s", label="settings", action="open_settings"),
             Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
         ]
 
@@ -526,7 +537,9 @@ class MainScreen(Screen[str]):
             Hint(key="↑↓", label="scroll"),
             Hint(key="↵", label="siphon", action="submit_current"),
             Hint(key="esc", label="back", action="cancel_or_back"),
+            Hint(key="?", label="help", action="show_help"),
             Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^s", label="settings", action="open_settings"),
             Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
         ]
 
@@ -542,7 +555,9 @@ class MainScreen(Screen[str]):
     def _hints_for_downloading(self) -> list[Hint]:
         return [
             Hint(key="esc", label="cancel", action="cancel_or_back"),
+            Hint(key="?", label="help", action="show_help"),
             Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^s", label="settings", action="open_settings"),
             Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
         ]
 
@@ -563,7 +578,9 @@ class MainScreen(Screen[str]):
     def _hints_for_done(self) -> list[Hint]:
         return [
             Hint(key="↵", label="siphon another", action="cancel_or_back"),
+            Hint(key="?", label="help", action="show_help"),
             Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^s", label="settings", action="open_settings"),
             Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
         ]
 
@@ -577,7 +594,9 @@ class MainScreen(Screen[str]):
     def _hints_for_error(self) -> list[Hint]:
         return [
             Hint(key="↵", label="try again", action="cancel_or_back"),
+            Hint(key="?", label="help", action="show_help"),
             Hint(key="^c", label="quit", action="quit"),
+            Hint(key="^s", label="settings", action="open_settings"),
             Hint(key="^t", label=f"theme:{self.app.theme_mode}", action="cycle_theme"),  # type: ignore[attr-defined]
         ]
 
@@ -890,11 +909,14 @@ class MainScreen(Screen[str]):
             return
         framed.input.submit_now()
 
+    def action_open_settings(self) -> None:
+        from siphon.ui.screens.settings import SettingsModal
+
+        self.app.push_screen(SettingsModal())
+
     def action_open_history(self) -> None:
         """Push the searchable history modal (yoinks M7 ^r extra)."""
         entries = history_service.load_entries()
-        if not entries:
-            return  # nothing recorded yet — silently no-op
         self.app.push_screen(HistoryModal(entries), self._on_history_picked)
 
     def _on_history_picked(self, url: str | None) -> None:
